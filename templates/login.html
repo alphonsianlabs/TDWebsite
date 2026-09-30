@@ -77,6 +77,14 @@ body {
   overflow-x: hidden;
   transition: background 0.4s ease;
 }
+body.transition-out {
+  opacity: 0;
+  transform: scale(0.98);
+}
+body.transition-in {
+  opacity: 1;
+  transform: scale(1);
+}
 
 /* ---------- decorative sky / sparkle layer ---------- */
 .sky {
@@ -414,8 +422,7 @@ body {
         </div>
       </div>
     </section>
-
-    <!-- FIXED: name="email" matches Flask request.form.get('email') and native submission works -->
+    
     <form class="login-card glass" id="loginForm" action="/login" method="POST">
       <label for="schoolEmail">Log in with your school email</label>
       <input
@@ -433,6 +440,162 @@ body {
   </main>
 
   <script>
+/**
+ * Teachers' Day Portal - Seamless Client-Side Router & Auth Manager
+ * Handles authentication sessions, route interception, and smooth view transitions.
+ */
+
+(function () {
+  'use strict';
+
+  // Session & Auth Management
+  const AUTH_KEY = 'sacs_portal_user';
+
+  function getCurrentUser() {
+    try {
+      return JSON.parse(localStorage.getItem(AUTH_KEY));
+    } catch {
+      return null;
+    }
+  }
+
+  function setCurrentUser(userData) {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
+  }
+
+  function clearSession() {
+    localStorage.removeItem(AUTH_KEY);
+  }
+
+  // Determine user role and destination based on email
+  function handleLogin(email) {
+    const cleanEmail = email.trim().toLowerCase();
+    const isTeacher = cleanEmail.includes('teacher') || cleanEmail.includes('santos') || !cleanEmail.startsWith('100'); // Example heuristic or teacher email check
+    
+    // For robust routing, check if email belongs to a teacher or student
+    const userData = {
+      email: cleanEmail,
+      role: isTeacher ? 'teacher' : 'student',
+      loginTime: Date.now()
+    };
+    
+    setCurrentUser(userData);
+    
+    // Route to appropriate dashboard smoothly
+    const destination = userData.role === 'teacher' ? 'teacher_portal.html' : 'compose.html';
+    navigateTo(destination);
+  }
+
+  // Smooth View Transition Engine
+  async function navigateTo(url) {
+    if (document.startViewTransition) {
+      // Use native View Transitions API if supported for buttery-smooth morphing
+      document.startViewTransition(async () => {
+        await loadPageContent(url);
+      });
+    } else {
+      // Fallback custom fade/slide transition
+      document.body.classList.add('transition-out');
+      setTimeout(async () => {
+        await loadPageContent(url);
+        document.body.classList.remove('transition-out');
+        document.body.classList.add('transition-in');
+        setTimeout(() => document.body.classList.remove('transition-in'), 400);
+      }, 200);
+    }
+    history.pushState({ path: url }, '', url);
+  }
+
+  async function loadPageContent(url) {
+    try {
+      const response = await fetch(url);
+      const htmlText = await response.text();
+      
+      // Parse incoming HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      
+      // Update DOM elements seamlessly
+      document.title = doc.title;
+      document.body.innerHTML = doc.body.innerHTML;
+      
+      // Execute any inline scripts inside the newly loaded content
+      doc.querySelectorAll('script').forEach(oldScript => {
+        const newScript = document.createElement('script');
+        if (oldScript.src) {
+          newScript.src = oldScript.src;
+        } else {
+          newScript.textContent = oldScript.textContent;
+        }
+        document.body.appendChild(newScript);
+      });
+      
+      attachInterceptors();
+    } catch (err) {
+      console.error('Navigation error, falling back to standard redirect:', err);
+      window.location.href = url;
+    }
+  }
+
+  // Intercept links and login forms globally
+  function attachInterceptors() {
+    // Intercept anchor clicks
+    document.querySelectorAll('a[href]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const href = link.getAttribute('href');
+        if (href && href.endsWith('.html') && !href.startsWith('http')) {
+          e.preventDefault();
+          navigateTo(href);
+        }
+      });
+    });
+
+    // Intercept login forms
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+      loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const emailInput = loginForm.querySelector('input[name="email"]');
+        if (emailInput && emailInput.value) {
+          handleLogin(emailInput.value);
+        }
+      });
+    }
+
+    // Intercept logout buttons
+    document.querySelectorAll('a[href*="login"], a[href*="index"]').forEach(btn => {
+      if (btn.textContent.toLowerCase().includes('log out')) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          clearSession();
+          navigateTo('login.html');
+        });
+      }
+    });
+  }
+
+  // Handle browser back/forward buttons
+  window.addEventListener('popstate', (e) => {
+    const path = window.location.pathname.split('/').pop() || 'login.html';
+    loadPageContent(path);
+  });
+
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', () => {
+    attachInterceptors();
+    
+    // Optional guard: redirect unauthenticated users trying to access protected dashboards
+    const user = getCurrentUser();
+    const currentPath = window.location.pathname.split('/').pop();
+    
+    if (!user && currentPath !== 'login.html' && currentPath !== '') {
+      navigateTo('login.html');
+    }
+  });
+
+})();
+
+// ---------------------------------------------END OF PAGE TRANSFERRING JS----------------------------------------------
 const REVEAL_TIME = new Date("2026-10-02T16:00:00+08:00").getTime();
 
 const els = {

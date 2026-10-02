@@ -144,11 +144,20 @@ body { display: flex; flex-direction: column; align-items: stretch; }
 .search-bar svg { width: 18px; height: 18px; color: var(--text-dim); flex: none; }
 .search-bar input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--font-body); font-size: 0.95rem; }
 .search-bar input::placeholder { color: var(--text-dim); opacity: .75; }
-.seg { display: flex; padding: 3px; border-radius: 999px; flex: none; }
-.seg button { appearance: none; border: 0; background: transparent; color: var(--text-dim); font: 600 0.8rem var(--font-body); padding: 0.5rem 0.85rem; border-radius: 999px; cursor: pointer; transition: background .2s, color .2s; }
-.seg button[aria-pressed="true"] { background: rgba(242,183,5,.22); color: var(--gold-soft); box-shadow: 0 0 0 1px rgba(242,183,5,.35) inset; }
+
+/* Segmented control with a sliding highlight (same as compose.html) */
+.seg { position: relative; display: flex; padding: 3px; border-radius: 999px; flex: none; isolation: isolate; }
+.seg.glass > .seg-indicator {
+  position: absolute; top: 3px; left: 3px; bottom: 3px; width: 0; border-radius: 999px;
+  background: rgba(242,183,5,.22); box-shadow: 0 0 0 1px rgba(242,183,5,.35) inset;
+  transition: transform 0.32s cubic-bezier(.22,1,.36,1), width 0.32s cubic-bezier(.22,1,.36,1);
+  z-index: 0; pointer-events: none;
+}
+.seg button { position: relative; z-index: 1; appearance: none; forced-color-adjust: none; border: 0; background: transparent; color: var(--text-dim); font: 600 0.8rem var(--font-body); padding: 0.5rem 0.85rem; border-radius: 999px; cursor: pointer; transition: color 0.25s ease; }
+.seg button[aria-pressed="true"] { color: var(--gold-soft); }
 @media (prefers-color-scheme: light) { .seg button[aria-pressed="true"] { color: var(--gold); } }
 .seg button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .seg.glass > .seg-indicator { transition: none; } }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; width: 100%; }
 .card { appearance: none; text-align: left; font: inherit; color: var(--text); border-radius: 18px; padding: 1.2rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.4rem; }
@@ -234,6 +243,7 @@ body { display: flex; flex-direction: column; align-items: stretch; }
           <input type="search" id="searchLetters" placeholder="Search by student name or keyword..." aria-label="Search letters">
         </div>
         <div class="seg glass" role="group" aria-label="Filter letters">
+          <span class="seg-indicator" id="segIndicator" aria-hidden="true"></span>
           <button type="button" data-filter="public" aria-pressed="true" id="filterPublic">Public Messages (0)</button>
           <button type="button" data-filter="private" aria-pressed="false" id="filterPrivate">Private Messages (0)</button>
         </div>
@@ -376,6 +386,33 @@ body { display: flex; flex-direction: column; align-items: stretch; }
     if (e.persisted) { document.body.classList.remove('page-exit'); if (!getSession()) window.location.replace('index.html'); }
   });
 
+  /* ---------- Sliding highlight for the Public / Private toggle ---------- */
+  let segPlaced = false;
+  function syncSegIndicator() {
+    const seg = document.querySelector('.seg');
+    const indicator = $('#segIndicator');
+    const active = seg && seg.querySelector('[data-filter][aria-pressed="true"]');
+    if (!seg || !indicator || !active) return;
+    const segRect = seg.getBoundingClientRect();
+    const btnRect = active.getBoundingClientRect();
+    if (!btnRect.width) return; // hidden (still locked) - will sync once visible
+    const offset = btnRect.left - segRect.left - 3;
+    if (!segPlaced) {
+      // First placement: jump into position without animating from 0
+      indicator.style.transition = 'none';
+      indicator.style.width = btnRect.width + 'px';
+      indicator.style.transform = 'translateX(' + offset + 'px)';
+      void indicator.offsetWidth;
+      indicator.style.transition = '';
+      segPlaced = true;
+    } else {
+      indicator.style.width = btnRect.width + 'px';
+      indicator.style.transform = 'translateX(' + offset + 'px)';
+    }
+  }
+  window.addEventListener('resize', syncSegIndicator);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncSegIndicator);
+
   /* ---------- Countdown / lock ---------- */
   const lockedView = $('#lockedView'), unlockedView = $('#unlockedView');
   const els = { days: $('#days'), hours: $('#hours'), minutes: $('#minutes'), seconds: $('#seconds') };
@@ -388,6 +425,7 @@ body { display: flex; flex-direction: column; align-items: stretch; }
       clearInterval(timerId);
       lockedView.hidden = true;
       unlockedView.hidden = false;
+      requestAnimationFrame(syncSegIndicator);
       if (!loaded) { loaded = true; loadLetters(); }
       return;
     }
@@ -473,6 +511,9 @@ body { display: flex; flex-direction: column; align-items: stretch; }
         : filter === 'private' && !privateLetters.length ? 'No private messages yet. Check back soon!'
         : 'No letters match your search.';
     }
+
+    // Button labels changed width (counts) - keep the highlight fitted to the active button
+    syncSegIndicator();
   }
 
   $('#letterGrid').addEventListener('click', (e) => {
@@ -485,6 +526,7 @@ body { display: flex; flex-direction: column; align-items: stretch; }
   document.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => {
     filter = b.dataset.filter;
     document.querySelectorAll('[data-filter]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    syncSegIndicator(); // slide the highlight first so it animates smoothly
     render();
   }));
   $('#searchLetters').addEventListener('input', (e) => { query = e.target.value; render(); });

@@ -36,9 +36,7 @@ body {
   background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
   overflow-x: hidden;
 }
-/* Page fade. Named page-* so it never collides with the stage transitions,
-   and no fill-mode so no lingering transform (a lingering transform on <body>
-   breaks position:fixed children). */
+
 body.page-enter { animation: pageIn 0.4s ease; }
 body.page-exit { opacity: 0; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; }
 @keyframes pageIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
@@ -74,7 +72,6 @@ body.page-exit { opacity: 0; transform: scale(0.98); transition: opacity 0.3s ea
   50% { opacity: var(--star-opacity); transform: scale(1.05); }
 }
 
-/* ---------- Glass + hover glow (same as compose) ---------- */
 .glass {
   position: relative; overflow: hidden;
   background: var(--glass-bg); border: 1px solid var(--glass-border);
@@ -237,8 +234,8 @@ body { display: flex; flex-direction: column; align-items: stretch; }
           <input type="search" id="searchLetters" placeholder="Search by student name or keyword..." aria-label="Search letters">
         </div>
         <div class="seg glass" role="group" aria-label="Filter letters">
-          <button type="button" data-filter="all" aria-pressed="true" id="filterAll">All (0)</button>
-          <button type="button" data-filter="unread" aria-pressed="false" id="filterUnread">Unread (0)</button>
+          <button type="button" data-filter="public" aria-pressed="true" id="filterPublic">Public Messages (0)</button>
+          <button type="button" data-filter="private" aria-pressed="false" id="filterPrivate">Private Messages (0)</button>
         </div>
       </div>
       <div class="grid" id="letterGrid" aria-live="polite"></div>
@@ -263,7 +260,7 @@ body { display: flex; flex-direction: column; align-items: stretch; }
 
   const AUTH_KEY = 'sacs_portal_user';
   const REVEAL_TIME = new Date('2026-10-02T16:00:00+08:00').getTime();
-  const FORCE_UNLOCK = false; // set true to preview the unlocked dashboard early
+  const FORCE_UNLOCK = true; // set true to preview the unlocked dashboard early
 
   const SUPABASE_URL = 'https://qlmyhubnfjjhqrnugbvl.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsbXlodWJuZmpqaHFybnVnYnZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NDg0NzksImV4cCI6MjEwNjIyNDQ3OX0.HaOL_CKuCk8ZoUNTh308seJs3RR4ASIXH_9zCANFFNw';
@@ -347,6 +344,13 @@ body { display: flex; flex-direction: column; align-items: stretch; }
   const inkFor = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150 ? '#1d1a33' : '#ffffff'; };
   const normEmail = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+  function parseIsPublic(val) {
+    if (val === false || val === 'false' || val === 'FALSE' || val === 0 || val === '0') {
+      return false;
+    }
+    return true;
+  }
+
   function getSession() { try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch (e) { return null; } }
   function go(url) { document.body.classList.add('page-exit'); setTimeout(() => { window.location.href = url; }, 300); }
 
@@ -404,12 +408,13 @@ body { display: flex; flex-direction: column; align-items: stretch; }
   try { readSet = new Set(JSON.parse(localStorage.getItem(READ_KEY)) || []); } catch (e) {}
   function saveRead() { try { localStorage.setItem(READ_KEY, JSON.stringify([...readSet])); } catch (e) {} }
 
-  let letters = [], filter = 'all', query = '', loadError = false;
+  let letters = [], filter = 'public', query = '', loadError = false;
 
   async function loadLetters() {
     loadError = false;
     try {
       if (!sb) throw new Error('Supabase client not loaded');
+      // Fetch all messages addressed to this teacher regardless of visibility setting
       const { data, error } = await sb.from('letters').select('*').eq('to_teacher', teacher.inbox);
       if (error) throw error;
       letters = (data || []).map((row, i) => {
@@ -419,6 +424,7 @@ body { display: flex; flex-direction: column; align-items: stretch; }
           key: String(row.id != null ? row.id : (row.created_at || i) + '|' + text.slice(0, 40)),
           from, text, bg: safeColor(row.bg || '#fff1a8'),
           date: row.created_at ? new Date(row.created_at) : null,
+          isPublic: parseIsPublic(row.is_public),
         };
       }).sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
     } catch (err) {
@@ -435,14 +441,19 @@ body { display: flex; flex-direction: column; align-items: stretch; }
   }
 
   function render() {
-    const unread = letters.filter((l) => !readSet.has(l.key)).length;
-    $('#filterAll').textContent = 'All (' + letters.length + ')';
-    $('#filterUnread').textContent = 'Unread (' + unread + ')';
+    const publicLetters = letters.filter((l) => l.isPublic);
+    const privateLetters = letters.filter((l) => !l.isPublic);
+
+    const filterPublicEl = $('#filterPublic');
+    const filterPrivateEl = $('#filterPrivate');
+    if (filterPublicEl) filterPublicEl.textContent = 'Public Messages (' + publicLetters.length + ')';
+    if (filterPrivateEl) filterPrivateEl.textContent = 'Private Messages (' + privateLetters.length + ')';
 
     const q = query.trim().toLowerCase();
-    const shown = letters.filter((l) =>
-      (filter === 'all' || !readSet.has(l.key)) &&
-      (!q || (l.from + ' ' + l.text).toLowerCase().includes(q)));
+    const currentList = filter === 'private' ? privateLetters : publicLetters;
+    const shown = currentList.filter((l) =>
+      !q || (l.from + ' ' + l.text).toLowerCase().includes(q)
+    );
 
     const grid = $('#letterGrid'), empty = $('#emptyState');
     grid.innerHTML = shown.map((l) => {
@@ -458,8 +469,9 @@ body { display: flex; flex-direction: column; align-items: stretch; }
     empty.hidden = shown.length > 0;
     if (!shown.length) {
       $('#emptyText').textContent = loadError ? 'We could not load your letters right now. Please refresh the page in a moment.'
-        : !letters.length ? 'No letters yet. Check back soon!'
-        : filter === 'unread' && !q ? 'You have read every letter. 🎉' : 'No letters match your search.';
+        : filter === 'public' && !publicLetters.length ? 'No public messages yet. Check back soon!'
+        : filter === 'private' && !privateLetters.length ? 'No private messages yet. Check back soon!'
+        : 'No letters match your search.';
     }
   }
 
@@ -541,7 +553,6 @@ body { display: flex; flex-direction: column; align-items: stretch; }
     if (!e.relatedTarget && active) { reset(active); active = null; }
   });
 })();
-  
   </script>
 </body>
 </html>

@@ -239,7 +239,7 @@ body {
   {"id": "t39", "name": "Gemaeka V. Juban", "emails": ["g.juban@sacs.edu.ph"], "inbox": "t39"},
   {"id": "t40", "name": "Cindy Y. Lazarte", "emails": ["c.lazarte@sacs.edu.ph"], "inbox": "offices"},
   {"id": "t68", "name": "Sr. Charlita O. Llemit", "emails": ["sr.llemit@sacs.edu.ph"], "inbox": "t68"},
-  {"id": "t41", "name": "Eldren Joseph G. Luzano", "emails": ["e.luzano@sacs.edu.ph", "ej.luzano@sacs.edu.ph"], "inbox": "offices"},
+  {"id": "t41", "name": "Eldren Joseph G. Luzano", "emails": ["e.luzano@sacs.edu.ph", "ej.luzano@sacs.edu.ph"], "inbox": "t41"},
   {"id": "t42", "name": "Christine E. Mamotos", "emails": ["c.mamotos@sacs.edu.ph"], "inbox": "t42"},
   {"id": "t43", "name": "Joni C. Mansueto", "emails": ["j.mansueto@sacs.edu.ph"], "inbox": "offices"},
   {"id": "t44", "name": "Maria Kristine C. Menina", "emails": ["m.menina@sacs.edu.ph", "mk.menina@sacs.edu.ph"], "inbox": "t44"},
@@ -335,6 +335,7 @@ body {
     clearInterval(timerId);
     els.days.textContent = els.hours.textContent = els.minutes.textContent = els.seconds.textContent = '00';
     els.section.classList.add('countdown--open');
+    els.section.style.display = 'none';
     els.label.textContent = 'Public messages are visible and teachers can log in';
   }
   function tick() {

@@ -355,7 +355,7 @@ body.compose::-webkit-scrollbar {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.25rem 1.5rem 6.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
   overflow: visible;
 }
 
@@ -726,6 +726,21 @@ body.compose::-webkit-scrollbar {
   -webkit-backdrop-filter: blur(6px);
 }
 
+/* The planet/teacher label pills were hardcoded to a dark navy background
+   with --text as the label color. --text correctly flips to a DARK color
+   in light mode (for the light page background), but this pill's own
+   background never flipped — so light mode ended up with dark text on a
+   dark pill. Override just the pill colors for light mode instead of
+   touching the (working) dark-mode look. */
+@media (prefers-color-scheme: light) {
+  .planet-label,
+  .teacher-label {
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(32, 26, 69, 0.14);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+  }
+}
+
 .stage {
   will-change: opacity, transform, filter, height;
   transform-origin: 50% 50%;
@@ -793,20 +808,42 @@ body.compose::-webkit-scrollbar {
 .btn-ghost { appearance: none; forced-color-adjust: none; background: transparent; border: 1px solid var(--glass-border); color: var(--text-dim); border-radius: 12px; padding: 0.85rem 1.1rem; font: 600 0.95rem var(--font-body); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
 .btn-ghost:hover { background: rgba(255,255,255,0.25); }
 
+/* The Log Out link sits on the topbar's purple-to-gold gradient banner,
+   which stays vivid in both themes (it doesn't flip brightness the way
+   the page background does). --text-dim flips to a DARK color in light
+   mode for use on the light page background, so on this banner it read
+   as dark-on-vivid — low contrast and hard to read. Force it to a
+   consistent white here regardless of theme. */
+@media (prefers-color-scheme: light) {
+  .topbar .btn-ghost {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+  .topbar .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* Was position:fixed with a manual 6.5rem bottom-padding "clearance
+   buffer" on .board to keep it from covering content. On some mobile
+   browsers that buffer wasn't enough and the last grid row in List view
+   was permanently covered with no way to scroll past it. Sticky instead
+   of fixed makes the button reserve its own real space at the end of
+   .board's flow, so it can never cover anything above it — no buffer
+   guesswork needed, and it still visually "floats" at the bottom of the
+   screen exactly like before once you've scrolled down to it. */
 .create-btn {
-  position: fixed;
-  z-index: 1000;
-  left: 50%;
+  position: sticky;
+  z-index: 100;
   bottom: max(1rem, env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
   width: min(340px, calc(100vw - 2rem));
-  margin: 0;
+  margin: 0.5rem auto 0;
   font-size: 1rem;
   padding: 1rem 1.4rem;
   flex: none;
 }
-.create-btn:hover { transform: translateX(-50%) translateY(-2px); }
-.create-btn:active { transform: translateX(-50%) scale(0.97); }
+.create-btn:hover { transform: translateY(-2px); }
+.create-btn:active { transform: scale(0.97); }
 
 .glass {
   --mouse-x: 50%;
@@ -1013,7 +1050,7 @@ body.compose::-webkit-scrollbar {
       <div id="stage" class="stage" aria-live="polite"></div>
     </div>
 
-    <button type="button" class="btn-gold glass create-btn" id="createLetterBtn" data-tilt-base="translateX(-50%)">Create a letter</button>
+    <button type="button" class="btn-gold glass create-btn" id="createLetterBtn">Create a letter</button>
 
   </main>
 

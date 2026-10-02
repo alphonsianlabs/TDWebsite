@@ -726,6 +726,18 @@ body.compose::-webkit-scrollbar {
   -webkit-backdrop-filter: blur(6px);
 }
 
+/* Light mode: light label pills with dark text under the planets / teachers */
+@media (prefers-color-scheme: light) {
+  .planet-label,
+  .teacher-label {
+    color: #201a45;
+    text-shadow: none;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(108, 92, 231, 0.28);
+    box-shadow: 0 2px 8px rgba(90, 80, 150, 0.18);
+  }
+}
+
 .stage {
   will-change: opacity, transform, filter, height;
   transform-origin: 50% 50%;
@@ -762,6 +774,12 @@ body.compose::-webkit-scrollbar {
 .card .dot { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.65), var(--c1) 45%, var(--c2)); }
 .card small { color: var(--text-dim); }
 
+/* List / letters view: extra room at the bottom so the fixed "Create a letter"
+   button never covers the last row and the page can scroll past it. */
+.stage--flow {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 .panel-title { margin: 0 0 0.8rem; font: 700 1.3rem/1.2 var(--font-display); }
 .letters { display: grid; gap: 0.8rem; }
 .letter { border-radius: 16px; padding: 1rem 1.1rem; background: var(--bg); color: var(--ink); box-shadow: 0 8px 20px rgba(0,0,0,.25); }
@@ -792,6 +810,16 @@ body.compose::-webkit-scrollbar {
 .actions .btn-gold { flex: 1; }
 .btn-ghost { appearance: none; forced-color-adjust: none; background: transparent; border: 1px solid var(--glass-border); color: var(--text-dim); border-radius: 12px; padding: 0.85rem 1.1rem; font: 600 0.95rem var(--font-body); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s; }
 .btn-ghost:hover { background: rgba(255,255,255,0.25); }
+
+/* Light mode: the Log Out button sits on the purple/gold top bar, so use white text */
+@media (prefers-color-scheme: light) {
+  .topbar .btn-ghost {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.7);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  }
+  .topbar .btn-ghost:hover { background: rgba(255, 255, 255, 0.25); }
+}
 
 .create-btn {
   position: fixed;
@@ -1205,7 +1233,6 @@ const SUBJECTS = [
   { id: "tle", name: "TLE", c1: "#d4f58a", c2: "#6a9a1f", teachers: [
     { id: "t5", name: "Luel S. Alesna", short: "Alesna" },
     { id: "t30", name: "Alfredo Q. Devocion", short: "Devocion" },
-    { id: "t42", name: "Christine E. Mamotos", short: "Mamotos" },
     { id: "t46", name: "Maria Dolores V. Noval", short: "Noval" },
     { id: "t50", name: "Arden Jose Refulle", short: "Refulle" },
     { id: "t55", name: "Kenneth L. Salas", short: "Salas" },
@@ -1215,6 +1242,7 @@ const SUBJECTS = [
     { id: "t20", name: "Janet N. Campo", short: "Campo" },
     { id: "t23", name: "Nilo E. Castro", short: "Castro" },
     { id: "t36", name: "Jocyl S. Guanzon", short: "Guanzon" },
+    { id: "t42", name: "Christine E. Mamotos", short: "Mamotos" },
     { id: "t54", name: "Renante C. Rocal", short: "Rocal" } ] },
 
   { id: "values", name: "Values Education", c1: "#ffe08a", c2: "#b8860b", teachers: [
